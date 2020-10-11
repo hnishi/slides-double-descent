@@ -1,0 +1,722 @@
+<section>
+
+<p>DEEP DOUBLE DESCENT: WHERE BIGGER MODELS AND MORE DATA HURT</p>
+
+<ul>
+  <li>Submitted on arxiv: 2019-12-04</li>
+  <li>Links:
+    <ul>
+      <li>ICLR 2020: <a href="https://iclr.cc/virtual_2020/poster_B1g5sA4twr.html">https://iclr.cc/virtual_2020/poster_B1g5sA4twr.html</a></li>
+      <li>arxiv: <a href="https://arxiv.org/abs/1912.02292">https://arxiv.org/abs/1912.02292</a></li>
+    </ul>
+  </li>
+  <li>
+    <p>Authors: Harvard University と OpenAI (GPT モデルを作ったところ) のグループ</p>
+  </li>
+  <li>Date: 2020-10-11</li>
+  <li>Speaker: hnishi</li>
+</ul>
+
+</section>
+<section>
+<section>
+
+<h2>概要</h2>
+
+<ul>
+  <li>近年の Deep Learning Model では、パラメータ数が大きいほどパフォーマンスがよくなる傾向がある</li>
+  <li>この傾向は、古典的な Bias-Variance Trade-off の概念とは矛盾している</li>
+  <li>トレーニングサンプル数よりもモデルの複雑さを上げることで、過学習の先に、さらにパフォーマンスが改善する現象 (Double Descent) が Deep Learning Models において広く起こることを証明した</li>
+</ul>
+
+</section>
+<section>
+
+<ul>
+  <li>Double Descent を Effective Model Complexity という指標を用いることで説明した</li>
+  <li>この論文で示される経験的な証拠は、従来の知恵を再整理し、刷新する内容であると考えられる</li>
+</ul>
+
+</section>
+<section>
+
+<p><strong>[補足] Bias-Variance Trade-off</strong></p>
+
+<blockquote>
+  <p>The bias-variance trade-off is a fundamental concept in classical statistical learning theory (e.g., Hastie et al. (2005)).</p>
+</blockquote>
+
+<ul>
+  <li>機械学習の教科書に登場する伝統的、古典的な内容</li>
+  <li>underfitting (high bias) と overfitting (high variance) のバランスを取れたモデルを作るべき</li>
+  <li>正則化項をつけて overfitting を起こりにくくするなどの工夫がされてきた</li>
+</ul>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-09-18-12-54.png" alt=""></p>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-09-18-13-14.png" alt=""></p>
+
+</section>
+<section>
+
+<p>References:</p>
+
+<ul>
+  <li><a href="https://medium.com/@6453gobind/bias-variance-trade-off-87986b5b5add">Bias–Variance Trade-off</a></li>
+  <li><a href="https://deeplearning.lipingyang.org/2016/12/21/diagnosing-bias-vs-variance/">Diagnosing Bias vs. Variance – Deep Learning Garden</a></li>
+</ul>
+
+</section>
+<section>
+
+<p><strong>[補足] GTP-3 は 1750億個のパラメータを持つ巨大なモデル</strong></p>
+
+<p><img src="images/2020-10-09-15-20-05.png" alt=""></p>
+
+<p>Ref: <a href="https://mc.ai/gpt-3-the-new-mighty-language-model-from-openai-2/">GPT-3: The New Mighty Language Model from OpenAI</a></p>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h2>Introduction</h2>
+
+</section>
+<section>
+
+<h3>伝統的に知られているコンセプトと近年 DL model に見られる現象の乖離</h3>
+
+<ul>
+  <li>伝統的な Bias–Variance Trade-off の考えかたでは、モデルを複雑にするほどパフォーマンスは悪くなる（過学習）と考えられてきた</li>
+  <li>つまり、「より大きなモデルは、より悪いモデルとなる」と理解されてきた</li>
+</ul>
+
+<blockquote>
+  <p>“larger models are worse.”</p>
+</blockquote>
+
+</section>
+<section>
+
+<ul>
+  <li>modern neural networks では、そのような現象は観測されていない</li>
+  <li>この界隈の practitioners の間で上記のことから「より大きなモデルは、より良いモデルとなる」ということが知られてきた</li>
+</ul>
+
+<blockquote>
+  <p>“larger models are better”</p>
+</blockquote>
+
+</section>
+<section>
+
+<ul>
+  <li>トレーニング時間がテストエラーに与える影響も議論されてきた</li>
+  <li>“early stopping” でテストエラーを小さく場合もあるし、それを使わずにトレーニングエラーが 0 になるまで学習する場合にパフォーマンスがよくなる場合もある</li>
+  <li>最終的な、classical statisticians と deep learning practitioners の共通認識としては、「より多くのデータを使うべし」ということであった</li>
+</ul>
+
+<blockquote>
+  <p>“more data is always better”</p>
+</blockquote>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h3>結果の概要 (詳細は後述)</h3>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-09-18-16-09.png" alt=""></p>
+
+</section>
+<section>
+
+<p>Figure 1 Left: Train and test error as a function of model size, for ResNet18s of varying width on CIFAR-10 with 15% label noise.</p>
+
+</section>
+<section>
+
+<ul>
+  <li>double descent が観測されている</li>
+  <li>パラメータ数を interpolation threshold (後述) より大きくするとテストエラーは低くなる</li>
+  <li>interpolation threshold より左側は、古典的な bias-variance trade-off の concept に従う挙動をする</li>
+  <li>interpolation threshold より右側は、モダンな Deep Learning モデルが示すようにパラメータ数が大きいほど、パフォーマンスが良くなる挙動を示す</li>
+</ul>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-09-20-26-09.png" alt=""></p>
+
+</section>
+<section>
+
+<p>Figure 1 Right: Test error, shown for varying train epochs. All models<br>
+trained using Adam for 4K epochs. The largest model (width 64) corresponds to standard ResNet18.</p>
+
+</section>
+<section>
+
+<ul>
+  <li>early stopping は interpolation threshold 付近の Critical Regeme と呼ばれる領域でのみ有効で、その他の領域ではあまり効果がない</li>
+  <li>Critical Regeme (interpolation thredhold 付近) では、epoch 数が大きいほどパフォーマンスが悪くなるが、それ以外の領域では、epoch 数が大きいほど良くなる</li>
+</ul>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-09-20-44-09.png" alt=""></p>
+
+</section>
+<section>
+
+<p>Figure 2 Left: Test error as a function of model size and train epochs. The horizontal line corresponds to model-wise double descent–varying model size while training for as long as possible. The vertical line corresponds to epoch-wise double descent, with test error undergoing double-descent as train time increases.</p>
+
+</section>
+<section>
+
+<ul>
+  <li>パラメータ数を大きくすることで Model-wise double descent を観測</li>
+  <li>epoch 数を大きくすることで Epoch-wise double descent を観測</li>
+</ul>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-09-20-47-49.png" alt=""></p>
+
+<ul>
+  <li>トレーニングエラーは単調減少</li>
+</ul>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-09-20-55-50.png" alt=""></p>
+
+</section>
+<section>
+
+<p>Figure 3: Test loss (per-token perplexity) as a function of Transformer model size (embedding dimension d_model) on language translation (IWSLT‘14 German-to-English). The curve for 18k samples is generally lower than the one for 4k samples, but also shifted to the right, since fitting 18k samples requires a larger model. Thus, for some models, the performance for 18k samples is worse than for 4k samples.</p>
+
+</section>
+<section>
+
+<ul>
+  <li>4,000 samples と 18,000 samples で比較</li>
+  <li>基本的にはサンプル数が大きい方がテストエラーは小さい</li>
+  <li>18k samples では全体的に右にシフトしているが、より大きなサンプル数に fitting するためにはより多くのパラメータが必要なため</li>
+  <li>一部のモデルサイズ領域 (赤線矢印の箇所) ではサンプル数が少ないほうがよいパフォーマンスを示す</li>
+</ul>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h2>実験の詳細</h2>
+
+<p>様々な条件で実験を行った結果、それぞれに特徴的な double descent の挙動が観測された。</p>
+
+<p>その詳細に関して、以下では説明する。</p>
+
+</section>
+<section>
+
+<h3>手法</h3>
+
+</section>
+<section>
+
+<ul>
+  <li>
+    <p>Architectures</p>
+
+    <ul>
+      <li>ResNets
+        <ul>
+          <li>a family of ResNet18s</li>
+          <li>layer widths [k; 2k; 4k; 8k] for varying k</li>
+          <li>the standard ResNet18 corresponds to k = 64</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+</section>
+<section>
+
+<ul>
+  <li>Architectures (continued)
+    <ul>
+      <li>Standard CNNs
+        <ul>
+          <li>a simple family of 5-layer CNNs, with 4 convolutional layers of widths [k; 2k; 4k; 8k] for varying k, and a fully-connected layer</li>
+        </ul>
+      </li>
+      <li>Transformers
+        <ul>
+          <li>the 6 layer encoder-decoder</li>
+          <li>modifying the embedding dimension $d_{model}$ , and setting the width of the fully-connected layers proportionally (dff = 4dmodel).</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+</section>
+<section>
+
+<ul>
+  <li>Datasets
+    <ul>
+      <li>CIFAR-10, CIFAR-100, IWSLT’14 de-en, WMT’14 en-fr</li>
+    </ul>
+  </li>
+  <li>Optimizers
+    <ul>
+      <li>SGD, Adam</li>
+    </ul>
+  </li>
+  <li>その他
+    <ul>
+      <li>data augmentation</li>
+      <li>label noise</li>
+      <li>early stopping</li>
+    </ul>
+  </li>
+</ul>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-18-30-29.png" width="50%" style="background:white; border:none; box-shadow:none;"></p>
+
+<p>より詳細が知りたい場合は論文の Appendix B を参照</p>
+
+</section>
+<section>
+
+<h3>Effective Model Complexity (EMC)</h3>
+
+<p><img src="images/2020-10-10-17-03-08.png" alt=""></p>
+
+<blockquote>
+  <p>We define the effective model complexity of T (w.r.t. distribution D) to be the maximum number of samples n on which T achieves on average ≈ 0 training error.</p>
+</blockquote>
+
+</section>
+<section>
+
+<ul>
+  <li>EMC は、トレーニング手順（モデルパラメータ数、epoch 数、その他）に依存</li>
+  <li>EMC = トレーニングエラーが $\epsilon = 0.1$ 以下となる最大サンプル数</li>
+  <li>現状、 $\epsilon = 0.1$ の設定値に根拠はなく、heuristic に決められている</li>
+</ul>
+
+</section>
+<section>
+
+<h3>Interpolation Threshold (EMC = n)</h3>
+
+<p>EMC と Interpolation threshold に関しては下図をみるとイメージしやすい</p>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-00-46-13.png" width="50%" style="background:white; border:none; box-shadow:none;"></p>
+
+</section>
+<section>
+
+<p>Figure 15: Sample-wise double-descent slice for Random Fourier Features on the Fashion MNIST dataset. In this figure the embedding dimension (number of random features) is 1000.</p>
+
+<p>Ref: <a href="https://www.acceluniverse.com/blog/developers/2020/01/deep-double-descent-where-bigger-models-and-more-data-hurt.html">技術ブログ アクセルユニバース株式会社</a></p>
+
+</section>
+<section>
+
+<blockquote>
+  <p>Our experiments suggest that there is a critical interval around the interpolation threshold when EMC = n: below and above this interval increasing complexity helps performance, while within this interval it may hurt performance.</p>
+</blockquote>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h3>MODEL-WISE DOUBLE DESCENT</h3>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-15-09-40.png" alt=""></p>
+
+</section>
+<section>
+
+<ul>
+  <li>ResNet18s の Width Parameter (モデルサイズ) を大きくしていくと double descent が観測された</li>
+  <li>CIFAR-10 の場合、誤ラベル (ノイズ) を導入しなかった場合、double descent は観測されなかったが、CIFAR-100 の場合にはノイズなしでも double descent が観測された</li>
+  <li>ノイズが double descent の出現に強く影響を与えている</li>
+</ul>
+
+</section>
+<section>
+
+<p><strong>[補足] Plateau</strong></p>
+
+<blockquote>
+  <p>There is a “plateau” in test error around the interpolation point with no label noise</p>
+</blockquote>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-10-19-58-16.png" alt="Plateau"></p>
+
+<p>Plataue: A comparatively stable level in something that varies.</p>
+
+<p><a href="https://topmeaning.com/english/Plateau">Plateau meaning and definition</a></p>
+
+</section>
+<section>
+
+<h4>Effect of Data Augmentation</h4>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-16-27-26.png" alt=""></p>
+
+</section>
+<section>
+
+<ul>
+  <li>data augmentation あり、なしで比較</li>
+  <li>data augmentation を行うことにより、peak が右にシフトした</li>
+  <li>論文中では議論はないが、data augmentation で interpolation threshold を shift させるのは、augmentation で training sample 数が増えているためか</li>
+</ul>
+
+</section>
+<section>
+
+<h4>Effects of optimizer and noise</h4>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-16-52-52.png" alt=""></p>
+
+</section>
+<section>
+
+<ul>
+  <li>Adam より SGD の方が、テストエラーが低くなる
+    <ul>
+      <li>論文中、理由に関しては議論はされていない</li>
+    </ul>
+  </li>
+  <li>ノイズがない場合でも、double descent のピークが出現するケースが有る</li>
+</ul>
+
+</section>
+<section>
+
+<h4>Transformers モデルにおける Dataset の違いが与える影響</h4>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-17-30-02.png" alt=""></p>
+
+<ul>
+  <li>より大きいデータセット (En-Fr) を使うと、ピークが右にシフトする</li>
+</ul>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h3>EPOCH-WISE DOUBLE DESCENT</h3>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-17-32-28.png" alt=""></p>
+
+<ul>
+  <li>モデルサイズは固定し、epoch 数を変えることでも double descent が起こる</li>
+</ul>
+
+</section>
+<section>
+
+<h4>ラベルノイズを載せたときの epoch-wise double descent</h4>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-17-34-14.png" alt=""></p>
+
+</section>
+<section>
+
+<ul>
+  <li>label noise がない場合は double descent は見られなかった</li>
+  <li>label noise がある場合は double descent が見られた</li>
+</ul>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h3>SAMPLE-WISE NON-MONOTONICITY</h3>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-17-37-36.png" alt=""></p>
+
+</section>
+<section>
+
+<ul>
+  <li>トレーニングサンプルの数を変えたときの変化</li>
+  <li>サンプル数が大きいほどテストエラーは低くなる傾向がある</li>
+  <li>左図 (a) の網掛け領域では、サンプル数がパフォーマンスに影響を与えていない</li>
+  <li>右図 (b) のように、サンプル数が比較的小さい領域では、サンプル数が大きいほどパフォーマンスが悪くなっている</li>
+</ul>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-17-47-39.png" width="80%" style="background:white; border:none; box-shadow:none;"></p>
+
+</section>
+<section>
+
+<ul>
+  <li>左図: モデルサイズとトレーニングサンプル数の2次元空間
+    <ul>
+      <li>interpolation threshold 付近にピークがある</li>
+    </ul>
+  </li>
+  <li>右図: 断面図
+    <ul>
+      <li>サンプル数は、小さい/大きいモデルではパフォーマンス改善するが、中間のモデルでは改善しない</li>
+    </ul>
+  </li>
+  <li>より多くのデータがパフォーマンスを改善しない例は、DNN のみならず Linear Model においても確認されている (Appendix D を参照)</li>
+</ul>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h3>正則化の程度によって起こる double descent (Appendix E.2.2)</h3>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-18-23-14.png" alt=""></p>
+
+</section>
+<section>
+
+<ul>
+  <li>epoch 数 vs 正則化項の係数 の空間で double descent のようなピークが観測されている</li>
+  <li>W-like shape のような感じ？</li>
+  <li>論文では予備的な解析 (preliminary analysis) という位置づけで、深く調査はされていない</li>
+</ul>
+
+</section>
+<section>
+
+<h3>Early stopping を使っていても double descent は起こる</h3>
+
+</section>
+<section>
+
+<p><img src="images/2020-10-11-18-34-51.png" width="70%" style="background:white; border:none; box-shadow:none;"></p>
+
+</section>
+<section>
+
+<ul>
+  <li>early stopping を有効にしていても、double descent が起こる例が見られた</li>
+  <li>ただし、ほとんどの場合、early stopping は double descent を抑制する</li>
+</ul>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h2>関連する先行研究</h2>
+
+</section>
+<section>
+
+<ul>
+  <li>Model-wise double descent は <a href="https://www.pnas.org/content/116/32/15849">Belkin et al. (2018)</a> によって、一般的な現象として、初めて提案された</li>
+  <li>それ以前にも、似たような挙動は報告されていた: Opper (1995; 2001), Advani &amp; Saxe (2017), Spigler et al. (2018), and Geiger et al. (2019b)</li>
+</ul>
+
+</section>
+<section>
+
+<ul>
+  <li>その後、double descent に関する多くの研究が発表された
+    <ul>
+      <li>追跡可能な線形二乗回帰を使った理論解析: Belkin et al. (2019); Hastie et al. (2019); Bartlett et al. (2019); Muthukumar et al. (2019); Bibas et al. (2019); Mitra (2019); Mei &amp; Montanari (2019)</li>
+      <li>CNN on CIFAR-10 の Model-wise double descent: Geiger et al. (2019a)</li>
+    </ul>
+  </li>
+</ul>
+
+</section>
+<section>
+
+<h3>Main contributions: 先行研究と比べて何がすごい？（新規性について）</h3>
+
+</section>
+<section>
+
+<ul>
+  <li>double-descent というアイデアを、パラメータ数のみならず EMC という指標を導入することで拡張し、epoch-wise double descent や sample non-monotonicity のような新しい観点を導いた</li>
+  <li>現代実用されている、幅広い DL の手法において、double-descent が起こることを示した</li>
+  <li>double descent が robust phenomenon that occurs in a variety<br>
+of tasks, architectures, and optimization methods であることを示した</li>
+  <li>early stopping は、critically parameterized された models でのみ役立つことがわかった</li>
+</ul>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h2>結論</h2>
+
+</section>
+<section>
+
+<ul>
+  <li>under-parameterized regime (モデルの複雑さがサンプル数に比べて小さい領域) では、テストエラーはモデルの複雑さの関数として、U 字型の挙動を示す (the classical bias/variance tradeoff の挙動を示す)</li>
+  <li>Over-parameterized regime (モデルの複雑さが十分に大きく zero training error もしくはそれに近い値を達成できる) では、モデルの複雑さをあげることでテストエラーを減少できる (“bigger models are better” の挙動を示す)</li>
+</ul>
+
+</section>
+<section>
+
+<ul>
+  <li>Critically parameterized regime では、label noise や model の mis-specification が悪影響を与えやすく、古典的な過学習が起こりやすい</li>
+  <li>EMC を導入することで、上記に説明を与えた</li>
+  <li>“epoch-wise double descent” を初めて提案した</li>
+  <li>より多くのデータを使うことがテストパフォーマンスに悪影響を与える場合があることを示した</li>
+</ul>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h2>議論</h2>
+
+</section>
+<section>
+
+<h3>double descent が起こる理由</h3>
+
+</section>
+<section>
+
+<ul>
+  <li>interpolation threshold のモデルサイズは、トレーニングデータに有効的に fit するモデルは１つのみ</li>
+  <li>このモデルはトレーニングデータセットのノイズ、またはモデルの誤設定に非常に敏感</li>
+  <li>これは、このモデルがかろうじて、トレーニングセットに fit しているためで、すこしでもノイズが入ると、その global structure を壊してしまう
+    <ul>
+      <li>実際に、5 models の ensembling が、critical regime のテストエラーを低くすることが示されている (Figure 28 を参照)</li>
+    </ul>
+  </li>
+</ul>
+
+</section>
+<section>
+
+<ul>
+  <li>over-parameterized models では、トレーニングセットに fit する多くの interpolating models があり、SGD がノイズを “memorizes” (or “absorbs”) できるモデルを見つけることができる</li>
+  <li>上記の仮説は、線形モデルに関しては理論的な裏付けがあり <a href="https://arxiv.org/abs/1908.05355">(Mei &amp; Montanari (2019))</a> 、Deep Learning においても拡張できると著者らは考えている</li>
+</ul>
+
+</section>
+<section>
+
+<h3>label noise が与える影響</h3>
+
+</section>
+<section>
+
+<ul>
+  <li>label noise を導入することで double descent が顕著になった</li>
+  <li>著者らは、これが label noise ではなく、model mis-specification に根本的な原因があると主張している</li>
+</ul>
+
+<blockquote>
+  <p>we view adding label noise as merely a proxy for making distributions<br>
+“harder”— i.e. increasing the amount of model mis-specification</p>
+</blockquote>
+
+</section>
+<section>
+
+<h3>残された課題</h3>
+
+<ul>
+  <li>Fully understanding the mechanisms behind model-wise double descent in deep neural networks remains an important open question</li>
+  <li>We leave fully understanding the optimal early stopping behavior of double descent as an important open question for future work.</li>
+  <li>EMC や既存の手法では location of the double-descent peak を特定できない</li>
+</ul>
+
+</section>
+</section>
+
+<section>
+<section>
+
+<h2>参考記事</h2>
+
+<ul>
+  <li><a href="https://www.axion.zone/gpt-3-with-175-billion-parameter/">GPT-3が1750億パラメータで構成される理由</a></li>
+  <li><a href="https://openai.com/blog/deep-double-descent/">Deep Double Descent</a></li>
+  <li><a href="https://twitter.com/daniela_witten/status/1292293125440847873">University of Washington の教授による解説</a></li>
+  <li><a href="https://www.acceluniverse.com/blog/developers/2020/01/deep-double-descent-where-bigger-models-and-more-data-hurt.html">技術ブログ アクセルユニバース株式会社</a></li>
+</ul>
+
+</section>
+</section>
