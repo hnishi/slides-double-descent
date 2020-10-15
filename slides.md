@@ -465,7 +465,6 @@ of tasks, architectures, and optimization methods であることを示した
 
 * Fully understanding the mechanisms behind model-wise double descent in deep neural networks remains an important open question
 * We leave fully understanding the optimal early stopping behavior of double descent as an important open question for future work.
-* EMC や既存の手法では location of the double-descent peak を特定できない
 
 ***
 ***
